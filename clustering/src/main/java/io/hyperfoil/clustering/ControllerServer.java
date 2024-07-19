@@ -522,6 +522,28 @@ class ControllerServer implements ApiService {
    }
 
    @Override
+   public void validateBenchmark(RoutingContext ctx, String name, String desc, String xTriggerJob, String runId, List<String> templateParam) {
+      Benchmark benchmark = controller.getBenchmark(name);
+      if (benchmark == null) {
+         BenchmarkSource template = controller.getTemplate(name);
+         if (template == null) {
+            ctx.response().setStatusCode(HttpResponseStatus.NOT_FOUND.code()).end("Benchmark not found");
+            return;
+         }
+         benchmark = templateToBenchmark(ctx, template, templateParam);
+         if (benchmark == null) {
+            return;
+         }
+      }
+
+      Run run = controller.createRun(benchmark, desc, false);
+      ctx.response()
+            .setStatusCode(HttpResponseStatus.MOVED_PERMANENTLY.code())
+            .putHeader("x-run-id", run.id)
+            .end("Run validated and created");
+   }
+
+   @Override
    public void startBenchmark(RoutingContext ctx, String name, String desc, String xTriggerJob, String runId, List<String> templateParam, boolean validate) {
       Benchmark benchmark = controller.getBenchmark(name);
       if (benchmark == null) {
@@ -562,6 +584,8 @@ class ControllerServer implements ApiService {
          if (run == null || run.startTime != Long.MIN_VALUE) {
             ctx.response().setStatusCode(HttpResponseStatus.FORBIDDEN.code()).end("Run already started");
             return;
+         } else {
+            run.validation = validate;
          }
       }
       String error = controller.startBenchmark(run, validate);

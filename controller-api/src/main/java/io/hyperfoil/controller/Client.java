@@ -55,8 +55,12 @@ public interface Client {
 
       Benchmark get();
 
+      // validate the benchmark and create a run in the controller
+      RunRef validate(String description, Map<String, String> templateParams);
+
       RunRef start(String description, Map<String, String> templateParams);
-      RunRef start(String description, Map<String, String> templateParams, Boolean validate);
+      RunRef start(String description, Map<String, String> templateParams, String runId);
+      RunRef start(String description, Map<String, String> templateParams, Boolean validate, String runId);
 
       BenchmarkStructure structure(Integer maxCollectionSize, Map<String, String> templateParams);
 

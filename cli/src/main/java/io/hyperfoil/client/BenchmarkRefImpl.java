@@ -76,14 +76,55 @@ class BenchmarkRefImpl implements Client.BenchmarkRef {
    }
 
    @Override
-   public Client.RunRef start(String description, Map<String, String> templateParams) {
-      return this.start(description, templateParams, Boolean.FALSE);
+   public Client.RunRef validate(String description, Map<String, String> templateParams) {
+      CompletableFuture<Client.RunRef> future = new CompletableFuture<>();
+      client.vertx.runOnContext(ctx -> {
+         HttpRequest<Buffer> request = client.request(HttpMethod.GET, "/benchmark/" + encode(name) + "/validate");
+         if (description != null) {
+            request.addQueryParam("desc", description);
+         }
+         for (var param : templateParams.entrySet()) {
+            request.addQueryParam("templateParam", param.getKey() + "=" + param.getValue());
+         }
+         request.send(rsp -> {
+            if (rsp.succeeded()) {
+               HttpResponse<Buffer> response = rsp.result();
+               String respRunId = response.getHeader("x-run-id");
+               if (response.statusCode() == 301) {
+                  if (respRunId == null) {
+                     future.completeExceptionally(new RestClientException("Server did not respond with run id, assuming validation failed!"));
+                     return;
+                  }
+                  future.complete(new RunRefImpl(client, respRunId));
+               } else {
+                  future.completeExceptionally(RestClient.unexpected(response));
+               }
+            } else {
+               future.completeExceptionally(rsp.cause());
+            }
+         });
+      });
+      return RestClient.waitFor(future);
    }
 
-   public Client.RunRef start(String description, Map<String, String> templateParams, Boolean validate) {
+   @Override
+   public Client.RunRef start(String description, Map<String, String> templateParams) {
+      return this.start(description, templateParams, Boolean.FALSE, null);
+   }
+
+   @Override
+   public Client.RunRef start(String description, Map<String, String> templateParams, String runId) {
+      return this.start(description, templateParams, Boolean.FALSE, runId);
+   }
+
+   @Override
+   public Client.RunRef start(String description, Map<String, String> templateParams, Boolean validate, String runId) {
       CompletableFuture<Client.RunRef> future = new CompletableFuture<>();
       client.vertx.runOnContext(ctx -> {
          HttpRequest<Buffer> request = client.request(HttpMethod.GET, "/benchmark/" + encode(name) + "/start");
+         if (runId != null) {
+            request.addQueryParam("runId", runId);
+         }
          if (description != null) {
             request.addQueryParam("desc", description);
          }
@@ -113,12 +154,12 @@ class BenchmarkRefImpl implements Client.BenchmarkRef {
                      future.completeExceptionally(new RestClientException("Cannot parse URL " + location, new RestClientException(e)));
                      return;
                   }
-                  String runId = response.getHeader("x-run-id");
+                  String respRunId = response.getHeader("x-run-id");
                   client.request(HttpMethod.GET, "https".equalsIgnoreCase(url.getProtocol()), url.getHost(), url.getPort(), url.getFile()).send(rsp2 -> {
                      if (rsp2.succeeded()) {
                         HttpResponse<Buffer> response2 = rsp2.result();
                         if (response2.statusCode() >= 200 && response2.statusCode() < 300) {
-                           future.complete(new RunRefImpl(client, runId == null ? "last" : runId));
+                           future.complete(new RunRefImpl(client, respRunId == null ? "last" : respRunId));
                         } else {
                            future.completeExceptionally(new RestClientException("Failed to indirectly trigger job on " + location + ", status is " + response2.statusCode()));
                         }

@@ -213,7 +213,10 @@ public class ControllerVerticle extends AbstractVerticle implements NodeListener
                      ControllerPhase controllerPhase = run.phases.get(pscm.phase);
                      if (controllerPhase != null) {
                         tryCompletePhase(run, pscm.phase, controllerPhase);
-                     } else {
+                     } else if (!run.validation) {
+                        // if run.validation is true, then startSimulation is not executed and the phases are not
+                        // added in the list, therefore it is expected that the phase is not found
+                        // log the error if and only if the phase is not found, and we are not running just validation
                         log.error("Run {}: Cannot find phase {}!", run.id, pscm.phase);
                      }
                   }
@@ -523,7 +526,7 @@ public class ControllerVerticle extends AbstractVerticle implements NodeListener
       }
    }
 
-   String startBenchmark(Run run, Boolean validation) {
+   String startBenchmark(Run run, Boolean validate) {
       Set<String> activeAgents = new HashSet<>();
       for (Run r : runs.values()) {
          if (!r.terminateTime.future().isComplete()) {
@@ -862,15 +865,15 @@ public class ControllerVerticle extends AbstractVerticle implements NodeListener
       return properties;
    }
 
-   public Run run(String runId) {
+   Run run(String runId) {
       return runs.get(runId);
    }
 
-   public Collection<Run> runs() {
+   Collection<Run> runs() {
       return runs.values();
    }
 
-   public void kill(Run run, Handler<AsyncResult<Void>> handler) {
+   void kill(Run run, Handler<AsyncResult<Void>> handler) {
       log.info("{} Killing run", run.id);
       try {
          run.cancelled = true;

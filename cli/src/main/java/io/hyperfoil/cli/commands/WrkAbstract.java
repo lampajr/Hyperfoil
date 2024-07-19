@@ -246,7 +246,9 @@ public abstract class WrkAbstract {
          addPhase(builder, PhaseType.calibration, "6s");
          // We can start only after calibration has full completed because otherwise some sessions
          // would not have connection available from the beginning.
-         addPhase(builder, PhaseType.test, duration).startAfterStrict(PhaseType.calibration.name()).maxDuration(Util.parseToMillis(duration));
+         addPhase(builder, PhaseType.test, duration)
+               .startAfterStrict(PhaseType.calibration.name())
+               .maxDuration(Util.parseToMillis(duration));
 
          RestClient client = invocation.context().client();
          if (client == null) {
@@ -255,31 +257,33 @@ public abstract class WrkAbstract {
                   + " to start a controller in this VM");
             return CommandResult.FAILURE;
          }
+
          Client.BenchmarkRef benchmark = client.register(builder.build(), null);
          invocation.context().setServerBenchmark(benchmark);
 
-         //validate benchmark
-         Client.RunRef run = benchmark.start(null, Collections.emptyMap(), Boolean.TRUE);
+         // validation of the benchmark
+         Client.RunRef run = benchmark.validate(null, Collections.emptyMap());
+         invocation.println("Validated run: " + run);
+         invocation.println("Going to start the benchmark..");
+         // boolean result = awaitBenchmarkResult(run, invocation);
 
-         boolean result = awaitBenchmarkResult(run, invocation);
+         // if (result) {
+         //    if (!run.get().errors.isEmpty()) {
+         //       invocation.println("ERROR: " + String.join(", ", run.get().errors));
+         //       return CommandResult.FAILURE;
+         //    }
+         // } else {
+         //    return CommandResult.FAILURE;
+         // }
 
-         if (result) {
-            if (run.get().errors.size() > 0) {
-               invocation.println("ERROR: " + run.get().errors.stream().collect(Collectors.joining(", ")));
-               return CommandResult.FAILURE;
-            }
-         } else {
-            return CommandResult.FAILURE;
-
-         }
-
-         run = benchmark.start(null, Collections.emptyMap());
+         // re-use the same run?
+         run = benchmark.start(null, Collections.emptyMap(), run.id());
          invocation.context().setServerRun(run);
 
          invocation.println("Running " + duration + " test @ " + url);
          invocation.println("  " + threads + " threads and " + connections + " connections");
 
-         result = awaitBenchmarkResult(run, invocation);
+         boolean result = awaitBenchmarkResult(run, invocation);
 
          if (result) {
             RequestStatisticsResponse total = run.statsTotal();
@@ -359,6 +363,9 @@ public abstract class WrkAbstract {
       }
 
       private void printStats(StatisticsSummary stats, AbstractHistogram histogram, List<StatisticsSummary> series, CommandInvocation invocation) {
+         if (histogram == null) {
+            throw new IllegalStateException("Error running command: Missing Histogram");
+         }
          TransferSizeRecorder.Stats transferStats = (TransferSizeRecorder.Stats) stats.extensions.get("transfer");
          HttpStats httpStats = HttpStats.get(stats);
          double durationSeconds = (stats.endTime - stats.startTime) / 1000d;
@@ -370,7 +377,7 @@ public abstract class WrkAbstract {
                String.format("%8.2f%%", statsWithinStdev(stats, histogram)));
          // Note: wrk samples #requests every 100 ms, Hyperfoil every 1s
          DoubleSummaryStatistics requestsStats = series.stream().mapToDouble(s -> s.requestCount).summaryStatistics();
-         double requestsStdDev = series.size() > 0 ? Math.sqrt(series.stream().mapToDouble(s -> Math.pow(s.requestCount - requestsStats.getAverage(), 2)).sum() / series.size()) : 0;
+         double requestsStdDev = !series.isEmpty() ? Math.sqrt(series.stream().mapToDouble(s -> Math.pow(s.requestCount - requestsStats.getAverage(), 2)).sum() / series.size()) : 0;
          invocation.println("    Req/Sec   " +
                String.format("%6.2f  ", requestsStats.getAverage()) +
                String.format("%8.2f  ", requestsStdDev) +

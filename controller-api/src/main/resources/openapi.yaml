@@ -128,6 +128,50 @@ paths:
           description: Benchmark was deleted
         '404':
           description: Benchmark is not defined.
+  /benchmark/{name}/validate:
+    get:
+      summary: Start a new run of this benchmark.
+      operationId: validateBenchmark
+      parameters:
+      - in: path
+        name: name
+        required: true
+        allowEmptyValue: false
+        schema:
+          type: string
+      - in: query
+        name: desc
+        description: Run description
+        schema:
+          type: string
+      - in: header
+        name: x-trigger-job
+        description: URL of CI job that triggers the run.
+        schema:
+          type: string
+      - in: query
+        name: runId
+        description: Run ID of run that was already requested but not started.
+        schema:
+          type: string
+      - in: query
+        name: templateParam
+        description: Template parameter in format KEY=VALUE
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        '202':
+          description: Run was successfully validated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '403':
+          description: There is an ongoing run. Try later.
+        '404':
+          description: Requested benchmark is not defined.
   /benchmark/{name}/start:
     get:
       summary: Start a new run of this benchmark.
