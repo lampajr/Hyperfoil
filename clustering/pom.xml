@@ -115,27 +115,6 @@
         </dependency>
 
         <dependency>
-            <!-- necessary for MR artifacts to be available
-            for >8 jre -->
-            <groupId>org.jboss.marshalling</groupId>
-            <artifactId>jboss-marshalling</artifactId>
-        </dependency>
-
-        <dependency>
-            <!-- necessary for MR artifacts to be available
-            for >8 jre -->
-            <groupId>org.jboss.marshalling</groupId>
-            <artifactId>jboss-marshalling-river</artifactId>
-        </dependency>
-
-        <dependency>
-            <!-- necessary for MR artifacts to be available
-            for >8 jre -->
-            <groupId>org.jboss.marshalling</groupId>
-            <artifactId>jboss-marshalling-serial</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>org.jboss.threads</groupId>
             <artifactId>jboss-threads</artifactId>
         </dependency>
