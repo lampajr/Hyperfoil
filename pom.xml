@@ -58,6 +58,7 @@
         <module>k8s-deployer</module>
         <module>plugins/codegen</module>
         <module>plugins/maven</module>
+<!--        <module>plugins/schemagen</module>-->
         <module>test-suite</module>
         <module>hotrod</module>
         <module>benchmarks</module>
