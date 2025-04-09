@@ -1,0 +1,11 @@
+# This benchmark demonstrates custom steps
+name: simple
+usersPerSec: 1
+duration: 5s
+scenario:
+  - test:
+      - setInt: foo <- 33
+      - log:
+          message: Foo is {}
+          vars:
+            - foo
